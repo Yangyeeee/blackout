@@ -158,7 +158,7 @@ class black2(nn.Module):
 
         #generate random index
         # ind = torch.randperm(self.classes)[:self.k].cuda()                          #sample w/o replacement
-        ind = torch.randint(0, self.classes, (self.k,))     #sample with replacement
+        ind = torch.randint(0, self.classes, (self.k,)).cuda()     #sample with replacement
         complement = yHat[:,ind]
 
         m = torch.ones_like(complement)
