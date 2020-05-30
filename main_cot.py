@@ -377,6 +377,8 @@ for epoch in range(start_epoch, args.epochs):
     # if args.GCE:
     #     lr_scheduler2.step()
     print(best_acc)
+    writer1.add_scalar('Loss/train', train_loss, epoch)
+    writer1.add_scalar('ACC/train', train_acc, epoch)
     writer1.add_scalar('Loss/test', test_loss, epoch)
     writer1.add_scalar('ACC/test', test_acc, epoch)
     with open(logname, 'a') as logfile:
