@@ -29,32 +29,22 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
-parser = argparse.ArgumentParser(
-    description='PyTorch training using GuidedComplementEntropy')
-parser.add_argument('--GCE', action='store_true',
-                    help='Using GuidedComplementEntropy')
-parser.add_argument('--black', action='store_true',
-                    help='Using GuidedComplementEntropy')
-parser.add_argument('--cifar', default=0, type=int,
-                    help='Using GuidedComplementEntropy')
-parser.add_argument('--alpha', '-a', default=0.333, type=float,
-                    help='alpha for guiding factor')
-parser.add_argument('--k',  default=5, type=int,
-                    help='alpha for guiding factor')
-parser.add_argument('--resume', '-r', action='store_true',
-                    help='resume from checkpoint')
+
+parser = argparse.ArgumentParser(description='PyTorch training using GuidedComplementEntropy')
+parser.add_argument('--GCE', action='store_true', help='Using GuidedComplementEntropy')
+parser.add_argument('--blackout', default=2, type=int, help='choose different versions of blackout (0, 1, 2)')
+parser.add_argument('--cifar', default=0, type=int, help='Using GuidedComplementEntropy')
+parser.add_argument('--alpha', '-a', default=0.333, type=float, help='alpha for guiding factor')
+parser.add_argument('--eps', default=1e-10, type=float, help='eps for numerical stability')
+parser.add_argument('--k',  default=5, type=int, help='alpha for guiding factor')
+parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--sess', default='default', type=str, help='session id')
 parser.add_argument('--seed', default=11111, type=int, help='rng seed')
-parser.add_argument('--decay', default=1e-4, type=float,
-                    help='weight decay (default=1e-4)')
-parser.add_argument('--lr', default=0.1, type=float,
-                    help='initial learning rate')
-parser.add_argument('--batch-size', '-b', default=128,
-                    type=int, help='mini-batch size (default: 128)')
-parser.add_argument('--epochs','-e', default=20, type=int,
-                    help='number of total epochs to run')
-parser.add_argument('--gpu', type=str, default="0",
-                    help='Which gpu to use.')
+parser.add_argument('--decay', default=1e-4, type=float, help='weight decay (default=1e-4)')
+parser.add_argument('--lr', default=0.1, type=float, help='initial learning rate')
+parser.add_argument('--batch-size', '-b', default=128, type=int, help='mini-batch size (default: 128)')
+parser.add_argument('--epochs', '-e', default=20, type=int, help='number of total epochs to run')
+parser.add_argument('--gpu', type=str, default="0", help='Which gpu to use.')
 
 args = parser.parse_args()
 
@@ -67,6 +57,7 @@ base_learning_rate = args.lr
 
 current_time = time.strftime('%d_%H:%M:%S', localtime())
 writer1 = SummaryWriter(log_dir='runs/' + current_time + '_' + args.sess, flush_secs=30)
+
 if use_cuda:
     # data parallel
     n_gpu = torch.cuda.device_count()
@@ -87,15 +78,11 @@ if args.cifar == 0:
         transforms.ToTensor()
     ])
 
-    trainset = torchvision.datasets.MNIST(
-        root='../../data', train=True, download=True, transform=transform_train)
-    trainloader = torch.utils.data.DataLoader(
-        trainset, batch_size=args.batch_size, shuffle=True, num_workers=2)
+    trainset = torchvision.datasets.MNIST(root='../../data', train=True, download=True, transform=transform_train)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=2)
 
-    testset = torchvision.datasets.MNIST(
-        root='../../data', train=False, download=True, transform=transform_test)
-    testloader = torch.utils.data.DataLoader(
-        testset, batch_size=1000, shuffle=False, num_workers=2)
+    testset = torchvision.datasets.MNIST(root='../../data', train=False, download=True, transform=transform_test)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=2)
 elif args.cifar == 10:
     print('==> Preparing CIFAR10 data.. (Default)')
     # classes = 10
@@ -112,19 +99,15 @@ elif args.cifar == 10:
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     ])
 
-    trainset = torchvision.datasets.CIFAR10(
-        root='../../data', train=True, download=True, transform=transform_train)
-    trainloader = torch.utils.data.DataLoader(
-        trainset, batch_size=batch_size, shuffle=True, num_workers=2)
+    trainset = torchvision.datasets.CIFAR10(root='../../data', train=True, download=True, transform=transform_train)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=2)
 
-    testset = torchvision.datasets.CIFAR10(
-        root='../../data', train=False, download=True, transform=transform_test)
-    testloader = torch.utils.data.DataLoader(
-        testset, batch_size=100, shuffle=False, num_workers=2)
+    testset = torchvision.datasets.CIFAR10(root='../../data', train=False, download=True, transform=transform_test)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
 
 elif args.cifar == 100:
     print('==> Preparing CIFAR100 data.. (Default)')
-    # classes = 10
+    # classes = 100
 
     transform_train = transforms.Compose([
         transforms.RandomCrop(32, padding=4),
@@ -138,15 +121,11 @@ elif args.cifar == 100:
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     ])
 
-    trainset = torchvision.datasets.CIFAR100(
-        root='../../data', train=True, download=True, transform=transform_train)
-    trainloader = torch.utils.data.DataLoader(
-        trainset, batch_size=batch_size, shuffle=True, num_workers=2)
+    trainset = torchvision.datasets.CIFAR100(root='../../data', train=True, download=True, transform=transform_train)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=2)
 
-    testset = torchvision.datasets.CIFAR100(
-        root='../../data', train=False, download=True, transform=transform_test)
-    testloader = torch.utils.data.DataLoader(
-        testset, batch_size=100, shuffle=False, num_workers=2)
+    testset = torchvision.datasets.CIFAR100(root='../../data', train=False, download=True, transform=transform_test)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
 
 
 # Model
@@ -161,7 +140,7 @@ if args.resume:
     start_epoch = checkpoint['epoch'] + 1
     torch.set_rng_state(checkpoint['rng_state'])
 else:
-    print('==> Building model.. (Default : LeNet5)')
+    print('==> Building model..')
     start_epoch = 0
     if args.cifar == 0:
         net = LeNet5_MNIST()
@@ -175,8 +154,7 @@ result_folder = './results/'
 if not os.path.exists(result_folder):
     os.makedirs(result_folder)
 
-logname = result_folder + net.__class__.__name__ + \
-    '_' + args.sess + '_' + str(args.seed) + '.csv'
+logname = result_folder + net.__class__.__name__ + '_' + args.sess + '_' + str(args.seed) + '.csv'
 
 if use_cuda:
     net.cuda()
@@ -190,16 +168,18 @@ if args.cifar == 10 or args.cifar == 100:
         cotcriterion = ComplementEntropy(args.cifar)
         # optimizer = torch.optim.SGD(net.parameters(), lr=0.01, momentum=0.9, weight_decay=5e-4)
         cotoptimizer = optim.SGD(net.parameters(), lr=base_learning_rate, momentum=0.9, weight_decay=args.decay)
-        lr_scheduler2 = torch.optim.lr_scheduler.MultiStepLR(cotoptimizer, milestones=[100, 150])
-    if args.black:
-        criterion =  black2(args.k,args.cifar) #nn.CrossEntropyLoss()
+        #lr_scheduler2 = torch.optim.lr_scheduler.MultiStepLR(cotoptimizer, milestones=[100, 150])
+    elif args.blackout == 0:
+        criterion = blackout0(args.k, args.cifar, args.eps, use_cuda)
+    elif args.blackout == 1:
+        criterion = blackout1(args.k, args.cifar, args.eps, use_cuda)
+    elif args.blackout == 2:
+        criterion = blackout2(args.k, args.cifar, args.eps, use_cuda)
     else:
         criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net.parameters(), lr=base_learning_rate,
-                      momentum=0.9, weight_decay=args.decay)
+    optimizer = optim.SGD(net.parameters(), lr=base_learning_rate, momentum=0.9, weight_decay=args.decay)
 else:
     if args.GCE:
-
         criterion = ComplementEntropy(args.cifar)
         optimizer = torch.optim.Adam(net.parameters(), lr=0.001, betas=(0.9, 0.99))
         # optimizer = optim.SGD(net.parameters(), lr=0.0004, momentum=0.9, weight_decay=0.0005)
@@ -209,7 +189,7 @@ else:
 
 # Training
 
-lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[100, 150])
+#lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[100, 150])
 
 def visualize(feat, labels, epoch):
     plt.ion()
@@ -233,8 +213,9 @@ def train(epoch):
     train_loss = 0
     correct = 0
     total = 0
-    data = []
-    label = []
+    #data = []
+    #label = []
+
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda()
@@ -280,8 +261,9 @@ def test(epoch):
     test_loss = 0
     correct = 0
     total = 0
-    ip1_loader = []
-    idx_loader = []
+    #ip1_loader = []
+    #idx_loader = []
+
     with torch.no_grad():
         for batch_idx, (inputs, targets) in enumerate(testloader):
             if use_cuda:
@@ -295,7 +277,7 @@ def test(epoch):
             total += targets.size(0)
             correct += predicted.eq(targets.data).cpu().sum()
             correct = correct.item()
-            #
+
             # ip1_loader.append(feat)
             # idx_loader.append((targets))
 
@@ -325,8 +307,7 @@ def checkpoint(acc, epoch):
     }
     if not os.path.isdir('checkpoint'):
         os.mkdir('checkpoint')
-    torch.save(state, './checkpoint/ckpt.t7.' +
-               args.sess + '_' + str(args.seed))
+    torch.save(state, './checkpoint/ckpt.t7.' + args.sess + '_' + str(args.seed))
 
 
 def adjust_learning_rate(optimizer, epoch):
@@ -362,8 +343,7 @@ def complement_adjust_learning_rate(optimizer, epoch):
 if not os.path.exists(logname):
     with open(logname, 'w') as logfile:
         logwriter = csv.writer(logfile, delimiter=',')
-        logwriter.writerow(
-            ['epoch', 'train loss', 'train acc', 'test loss', 'test acc'])
+        logwriter.writerow(['epoch', 'train loss', 'train acc', 'test loss', 'test acc'])
 
 for epoch in range(start_epoch, args.epochs):
 
@@ -385,6 +365,3 @@ for epoch in range(start_epoch, args.epochs):
         logwriter = csv.writer(logfile, delimiter=',')
         logwriter.writerow([epoch, train_loss, train_acc, test_loss, test_acc])
 
-
-# test_loss, test_acc = test(0)
-# print(test_acc)

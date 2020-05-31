@@ -92,38 +92,42 @@ class black(nn.Module):
 
         return loss
 
+class blackout0(nn.Module):
 
-class black1(nn.Module):
-
-    def __init__(self, k=5, classes=10):
-        super(black1, self).__init__()
+    def __init__(self, k=5, classes=10, eps=1e-10, use_cuda=False):
+        super(blackout0, self).__init__()
         self.k = k
         self.classes = classes
+        self.eps = eps
+        self.use_cuda = use_cuda
 
     # here we implemented step by step for corresponding to our formula
     # described in the paper
     def forward(self, yHat, y):
         self.batch_size = len(y)
         # yHat = torch.exp(yHat)
-        maxxx = torch.max(yHat, dim=-1)[0].unsqueeze(-1)
+        maxxx = torch.max(yHat, dim=-1)[0].unsqueeze(-1).detach()
         yHat = yHat - maxxx
         Yg = torch.gather(yHat, 1, torch.unsqueeze(y, 1))
 
         #get complement element
-        y_zerohot = torch.ones(self.batch_size, self.classes).scatter_(
-            1, y.view(self.batch_size, 1).data.cpu(), 0).cuda()
+        y_zerohot = torch.ones(self.batch_size, self.classes).scatter_(1, y.view(self.batch_size, 1).data.cpu(), 0)
+        if self.use_cuda:
+            y_zerohot = y_zerohot.cuda()
         Yg_ = torch.masked_select(yHat, y_zerohot.bool()).reshape(-1,self.classes -1)
 
         #generate random index
-        ind = torch.randperm(self.classes -1)                             #sample w/o replacement
-        # ind = torch.randint(0, self.classes -1, (self.classes -1,))     #sample with replacement
-        complement = Yg_[:,ind[0:self.k]]
+        #ind = torch.randperm(self.classes -1)                          #sample w/o replacement
+        ind = torch.randint(0, self.classes -1, (self.batch_size, self.k))     #sample with replacement
+        if self.use_cuda:
+            ind = ind.cuda()
+        complement = Yg_.gather(1, ind)
 
         #compute weighted softmax
         complement = self.k * torch.exp(complement)
-        Yg = self.k* torch.exp(Yg)
+        Yg = self.k * torch.exp(Yg)
         out = torch.cat((Yg, complement), 1)
-        out = out/(out.sum(dim=1).unsqueeze(-1))
+        out = out / (out.sum(dim=1).unsqueeze(-1))
 
         #calculate blackout loss
         out_c = 1 - out
@@ -131,23 +135,72 @@ class black1(nn.Module):
         mask[:,0] = 1
         mask_c = 1 - mask
 
-        loss = -1. * (torch.log(out + 1e-10)*mask + 0.1*torch.log(out_c + 1e-10 )*mask_c).sum(-1).mean()  #
+        loss = -1. * (torch.log(out + self.eps) * mask + torch.log(out_c + self.eps) * mask_c).mean()  #
         return loss
 
 
-class black2(nn.Module):
+class blackout1(nn.Module):
 
-    def __init__(self, k=5, classes=10):
-        super(black2, self).__init__()
+    def __init__(self, k=5, classes=10, eps=1e-10, use_cuda=False):
+        super(blackout1, self).__init__()
         self.k = k
         self.classes = classes
+        self.eps = eps
+        self.use_cuda = use_cuda
 
     # here we implemented step by step for corresponding to our formula
     # described in the paper
     def forward(self, yHat, y):
         self.batch_size = len(y)
         # yHat = torch.exp(yHat)
-        maxxx = torch.max(yHat, dim=-1)[0].unsqueeze(-1)
+        maxxx = torch.max(yHat, dim=-1)[0].unsqueeze(-1).detach()
+        yHat = yHat - maxxx
+        Yg = torch.gather(yHat, 1, torch.unsqueeze(y, 1))
+
+        #get complement element
+        y_zerohot = torch.ones(self.batch_size, self.classes).scatter_(1, y.view(self.batch_size, 1).data.cpu(), 0)
+        if self.use_cuda:
+            y_zerohot = y_zerohot.cuda()
+        Yg_ = torch.masked_select(yHat, y_zerohot.bool()).reshape(-1,self.classes -1)
+
+        #generate random index
+        #ind = torch.randperm(self.classes -1)                          #sample w/o replacement
+        ind = torch.randint(0, self.classes -1, (self.k,))     #sample with replacement
+        if self.use_cuda:
+            ind = ind.cuda()
+        complement = Yg_[:,ind]
+
+        #compute weighted softmax
+        complement = self.k * torch.exp(complement)
+        Yg = self.k * torch.exp(Yg)
+        out = torch.cat((Yg, complement), 1)
+        out = out / (out.sum(dim=1).unsqueeze(-1))
+
+        #calculate blackout loss
+        out_c = 1 - out
+        mask = torch.zeros_like(yHat)[:,:self.k+1]
+        mask[:,0] = 1
+        mask_c = 1 - mask
+
+        loss = -1. * (torch.log(out + self.eps) * mask + torch.log(out_c + self.eps) * mask_c).mean()  #
+        return loss
+
+
+class blackout2(nn.Module):
+
+    def __init__(self, k=5, classes=10, eps=1e-10, use_cuda=False):
+        super(blackout2, self).__init__()
+        self.k = k
+        self.classes = classes
+        self.eps = eps
+        self.use_cuda = use_cuda
+
+    # here we implemented step by step for corresponding to our formula
+    # described in the paper
+    def forward(self, yHat, y):
+        self.batch_size = len(y)
+        # yHat = torch.exp(yHat)
+        maxxx = torch.max(yHat, dim=-1)[0].unsqueeze(-1).detach()
         yHat = yHat - maxxx
         Yg = torch.gather(yHat, 1, torch.unsqueeze(y, 1))
 
@@ -155,10 +208,11 @@ class black2(nn.Module):
         # y_zerohot = torch.ones(self.batch_size, self.classes).scatter_(
         #     1, y.view(self.batch_size, 1).data.cpu(), 0).cuda()
         # Yg_ = torch.masked_select(yHat, y_zerohot.bool()).reshape(-1,self.classes -1)
-
         #generate random index
-        # ind = torch.randperm(self.classes)[:self.k].cuda()                          #sample w/o replacement
-        ind = torch.randint(0, self.classes, (self.k,)).cuda()     #sample with replacement
+        # ind = torch.randperm(self.classes)[:self.k]        #sample w/o replacement
+        ind = torch.randint(0, self.classes, (self.k,))     #sample with replacement
+        if self.use_cuda:
+            ind = ind.cuda()
         complement = yHat[:,ind]
 
         m = torch.ones_like(complement)
@@ -168,9 +222,9 @@ class black2(nn.Module):
         #compute weighted softmax
         complement = self.k * torch.exp(complement)
         complement *= m
-        Yg = self.k* torch.exp(Yg)
+        Yg = self.k * torch.exp(Yg)
         out = torch.cat((Yg, complement), 1)
-        out = out/(out.sum(dim=1).unsqueeze(-1))
+        out = out / (out.sum(dim=1).unsqueeze(-1))
 
         #calculate blackout loss
         out_c = 1 - out
@@ -178,5 +232,5 @@ class black2(nn.Module):
         mask[:,0] = 1
         mask_c = 1 - mask
 
-        loss = -1. * (torch.log(out + 1e-10)*mask + torch.log(out_c + 1e-10 )*mask_c).sum(-1).mean()  #
+        loss = -1. * (torch.log(out + self.eps) * mask + torch.log(out_c + self.eps) * mask_c).mean() #.sum(-1).mean()  #
         return loss
