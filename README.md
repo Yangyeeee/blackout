@@ -3,8 +3,11 @@
 torch  1.4.0 
 python 3.5
 
+baseline:
+python main_cot.py --gpu 4 --sess softmax.1 --cifar 100 -e 200 --lr 0.1    (test acc: 74.11%)
 
-python main_cot.py --gpu 4 --sess 100black2_50_0.01w --cifar 100 -e 200 --lr 0.001 --k 50 --black
+blackout:
+python main_cot.py --gpu 4 --sess black1.50.1 --cifar 100 -e 200 --lr 0.1 --k 50 --blackout 1    (test acc: 75.28%)
 
 --gpu    wich gpu to use
 
@@ -14,8 +17,7 @@ python main_cot.py --gpu 4 --sess 100black2_50_0.01w --cifar 100 -e 200 --lr 0.0
 
 --cifar  (0,10,100) specify which dataset( mnist, cifar10,cifar100)
 
---black enable blackout
+--blackout (0 , 1, 2) enable different blackout versions (1 best so far)
 
 --GCE enbale COT training
 
-if use code black1 ( target dependent sampling), lerning rate should be 0.01
