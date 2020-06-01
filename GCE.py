@@ -2,7 +2,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import numpy as np
 # For MNIST dataset we difine classes to 10
 classes = 10
 
@@ -225,6 +225,53 @@ class blackout2(nn.Module):
         Yg = self.k * torch.exp(Yg)
         out = torch.cat((Yg, complement), 1)
         out = out / (out.sum(dim=1).unsqueeze(-1))
+
+        #calculate blackout loss
+        out_c = 1 - out
+        mask = torch.zeros_like(yHat)[:,:self.k+1]
+        mask[:,0] = 1
+        mask_c = 1 - mask
+
+        loss = -1. * (torch.log(out + self.eps) * mask + torch.log(out_c + self.eps) * mask_c).mean() #.sum(-1).mean()  #
+        return loss
+
+
+class blackout3(nn.Module):
+
+    def __init__(self, k=5, classes=10, eps=1e-10, use_cuda=False,prob=0):
+        super(blackout3, self).__init__()
+        self.k = k
+        self.classes = classes
+        self.eps = eps
+        self.use_cuda = use_cuda
+        self.prob = prob
+
+    # here we implemented step by step for corresponding to our formula
+    # described in the paper
+    def forward(self, yHat, y):
+        self.batch_size = len(y)
+        # yHat = torch.exp(yHat)
+        maxxx = torch.max(yHat, dim=-1)[0].unsqueeze(-1).detach()
+        yHat = yHat - maxxx
+        Yg = torch.gather(yHat, 1, torch.unsqueeze(y, 1))
+
+
+        complement = torch.zeros_like(yHat)[:, :self.k]
+        p = torch.ones_like(yHat)[:, :self.k]
+        #generate random index
+        for i in range(yHat.shape[0]):
+            ind = np.random.choice(a=100, size=self.k, replace=True, p=self.prob[y[i]])
+            complement[i] = yHat[i,ind]
+            p[i] *= torch.tensor(1/self.prob[y[i]][ind])
+        if self.use_cuda:
+            p = p.cuda()
+
+        #compute weighted softmax
+        complement = p *torch.exp(complement) #
+        q = torch.max(p,dim=-1,keepdim=True)[0]
+        Yg = q*torch.exp(Yg)
+        out = torch.cat((Yg, complement), 1)
+        out = out/(out.sum(dim=1).unsqueeze(-1))
 
         #calculate blackout loss
         out_c = 1 - out

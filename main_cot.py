@@ -128,6 +128,26 @@ elif args.cifar == 100:
     testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
 
 
+ ### generate p matrix
+# class_to_idx = trainset.class_to_idx
+# lables_vec = np.load("lables_vec.npy").item() #get_word2vec(class_to_idx.keys())
+### np.save("lables_vec.npy",lables_vec)
+# lables_mat = np.zeros((100,100)) # np.load("lables_mat.npy")
+# for i in class_to_idx.keys():
+#     ind = class_to_idx[i]
+#     lables_mat[ind] = lables_vec[i]
+# lables_mat =  lables_mat/np.linalg.norm(lables_mat,axis=-1, keepdims= True)
+# prob = lables_mat.dot(lables_mat.T)
+# np.save("prob.npy",prob)
+
+prob = np.load("prob.npy")
+
+prob = (prob + 1)/2
+# prob = 1 - prob
+for i in range(100):
+    prob[i,i] = 0
+prob = prob/(prob.sum(-1).reshape(-1,1))
+
 # Model
 if args.resume:
     # Load checkpoint.
@@ -175,6 +195,8 @@ if args.cifar == 10 or args.cifar == 100:
         criterion = blackout1(args.k, args.cifar, args.eps, use_cuda)
     elif args.blackout == 2:
         criterion = blackout2(args.k, args.cifar, args.eps, use_cuda)
+    elif args.blackout == 3:
+        criterion = blackout3(args.k, args.cifar, args.eps, use_cuda,prob)
     else:
         criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=base_learning_rate, momentum=0.9, weight_decay=args.decay)
@@ -340,10 +362,10 @@ def complement_adjust_learning_rate(optimizer, epoch):
         param_group['lr'] = lr
 
 
-if not os.path.exists(logname):
-    with open(logname, 'w') as logfile:
-        logwriter = csv.writer(logfile, delimiter=',')
-        logwriter.writerow(['epoch', 'train loss', 'train acc', 'test loss', 'test acc'])
+# if not os.path.exists(logname):
+#     with open(logname, 'w') as logfile:
+#         logwriter = csv.writer(logfile, delimiter=',')
+#         logwriter.writerow(['epoch', 'train loss', 'train acc', 'test loss', 'test acc'])
 
 for epoch in range(start_epoch, args.epochs):
 
@@ -361,7 +383,7 @@ for epoch in range(start_epoch, args.epochs):
     writer1.add_scalar('ACC/train', train_acc, epoch)
     writer1.add_scalar('Loss/test', test_loss, epoch)
     writer1.add_scalar('ACC/test', test_acc, epoch)
-    with open(logname, 'a') as logfile:
-        logwriter = csv.writer(logfile, delimiter=',')
-        logwriter.writerow([epoch, train_loss, train_acc, test_loss, test_acc])
+    # with open(logname, 'a') as logfile:
+    #     logwriter = csv.writer(logfile, delimiter=',')
+    #     logwriter.writerow([epoch, train_loss, train_acc, test_loss, test_acc])
 

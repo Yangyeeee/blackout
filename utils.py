@@ -92,3 +92,56 @@ def format_time(seconds):
     if f == '':
         f = '0ms'
     return f
+
+
+def get_word2vec(word_counter):
+    glove_path = "../../data/glove/glove.6B.100d.txt"
+    sizes = {'6B': int(4e5), '42B': int(1.9e6), '840B': int(2.2e6), '2B': int(1.2e6)}
+    total = sizes["6B"]
+    word2vec_dict = {}
+    word_counter = list(word_counter)
+
+    with open(glove_path, 'r') as fh:
+        for line in fh:
+            array = line.lstrip().rstrip().split(" ")
+            word = array[0]
+            vector = list(map(float, array[1:]))
+            if word in word_counter:
+                word2vec_dict[word] = vector
+            elif word.capitalize() in word_counter:
+                word2vec_dict[word.capitalize()] = vector
+            elif word.lower() in word_counter:
+                word2vec_dict[word.lower()] = vector
+            elif word.upper() in word_counter:
+                word2vec_dict[word.upper()] = vector
+            elif word == "maple":
+                print(word)
+                word2vec_dict["maple_tree"] = vector
+            elif word == "palm":
+                print(word)
+                word2vec_dict["palm_tree"] = vector
+            elif word == "pine":
+                print(word)
+                word2vec_dict["pine_tree"] = vector
+            elif word == "willow":
+                print(word)
+                word2vec_dict["willow_tree"] = vector
+            elif word == "oak":
+                print(word)
+                word2vec_dict["oak_tree"] = vector
+            elif word == "mower":
+                print(word)
+                word2vec_dict["lawn_mower"] = vector
+            elif word == "pepper":
+                print(word)
+                word2vec_dict["sweet_pepper"] = vector
+            elif word == "fish":
+                print(word)
+                word2vec_dict["aquarium_fish"] = vector
+            elif word == "truck":
+                print(word)
+                word2vec_dict["pickup_truck"] = vector
+
+
+    print("{}/{} of word vocab have corresponding vectors in {}".format(len(word2vec_dict), len(word_counter), glove_path))
+    return word2vec_dict
