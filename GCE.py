@@ -262,13 +262,12 @@ class blackout3(nn.Module):
         for i in range(yHat.shape[0]):
             ind = np.random.choice(a=100, size=self.k, replace=True, p=self.prob[y[i]])
             complement[i] = yHat[i,ind]
-            p[i] *= torch.tensor(1/self.prob[y[i]][ind])
-        if self.use_cuda:
-            p = p.cuda()
+            p[i] *= p.new_tensor(1/self.prob[y[i]][ind])
+
 
         #compute weighted softmax
         complement = p *torch.exp(complement) #
-        q = torch.max(p,dim=-1,keepdim=True)[0]
+        q = torch.min(p,dim=-1,keepdim=True)[0]
         Yg = q*torch.exp(Yg)
         out = torch.cat((Yg, complement), 1)
         out = out/(out.sum(dim=1).unsqueeze(-1))
