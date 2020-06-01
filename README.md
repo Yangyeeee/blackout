@@ -14,7 +14,7 @@ python main_cot.py --gpu 4 --sess black1.50.1 --cifar 100 -e 200 --lr 0.1 --k 50
 
 python main_cot.py --gpu 4 --sess black1.25.1 --cifar 100 -e 200 --lr 0.1 --k 25 --blackout 1    (test acc: 75.32%)
 
-python main_cot.py --gpu 4 --sess black3.25.1 --cifar 100 -e 200 --lr 0.1 --k 25 --blackout 3   (nonuniform sampling)
+python main_cot.py --gpu 4 --sess black3.25.1 --cifar 100 -e 200 --lr 0.1 --k 25 --blackout 3  --p 0.5 (nonuniform sampling)
 
 --gpu    wich gpu to use
 
@@ -27,4 +27,5 @@ python main_cot.py --gpu 4 --sess black3.25.1 --cifar 100 -e 200 --lr 0.1 --k 25
 --blackout (0 , 1, 2, 3) enable different blackout versions (1 best so far, 3 is nonuniform sampling)
 
 --GCE enbale COT training
+--p probability to generate matrix
 

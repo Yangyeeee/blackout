@@ -45,6 +45,7 @@ parser.add_argument('--lr', default=0.1, type=float, help='initial learning rate
 parser.add_argument('--batch-size', '-b', default=128, type=int, help='mini-batch size (default: 128)')
 parser.add_argument('--epochs', '-e', default=20, type=int, help='number of total epochs to run')
 parser.add_argument('--gpu', type=str, default="0", help='Which gpu to use.')
+parser.add_argument('--p', default=0.5, type=float, help='probability to generate matrix')
 
 args = parser.parse_args()
 
@@ -140,13 +141,61 @@ elif args.cifar == 100:
 # prob = lables_mat.dot(lables_mat.T)
 # np.save("prob.npy",prob)
 
-prob = np.load("prob.npy")
-
-prob = (prob + 1)/2
+# prob = np.load("prob.npy")
+# prob = (prob + 1)/2
+# for i in range(100):
+#     superclass = fine2coarse[i]
+#     sameclass = a[superclass]
+#     prob[i][sameclass] *= 10
 # prob = 1 - prob
-for i in range(100):
-    prob[i,i] = 0
-prob = prob/(prob.sum(-1).reshape(-1,1))
+#
+# for i in range(100):
+#     prob[i,i] = 0
+# prob = prob/(prob.sum(-1).reshape(-1,1))
+
+fine2coarse = np.load("fine2coarse.npy")
+a = np.array([
+    [ 4, 30, 55, 72, 95],
+    [ 1, 32, 67, 73, 91],
+    [54, 62, 70, 82, 92],
+    [ 9, 10, 16, 28, 61],
+    [ 0, 51, 53, 57, 83],
+    [22, 39, 40, 86, 87],
+    [ 5, 20, 25, 84, 94],
+    [ 6,  7, 14, 18, 24],
+    [ 3, 42, 43, 88, 97],
+    [12, 17, 37, 68, 76],
+    [23, 33, 49, 60, 71],
+    [15, 19, 21, 31, 38],
+    [34, 63, 64, 66, 75],
+    [26, 45, 77, 79, 99],
+    [ 2, 11, 35, 46, 98],
+    [27, 29, 44, 78, 93],
+    [36, 50, 65, 74, 80],
+    [47, 52, 56, 59, 96],
+    [ 8, 13, 48, 58, 90],
+    [41, 69, 81, 85, 89]])
+b = np.array(['apple', 'aquarium_fish', 'baby', 'bear', 'beaver', 'bed', 'bee', 'beetle', 'bicycle', 'bottle', 'bowl', 'boy', 'bridge', 'bus', 'butterfly', 'camel', 'can', 'castle', 'caterpillar', 'cattle', 'chair', 'chimpanzee', 'clock', 'cloud', 'cockroach', 'couch', 'crab', 'crocodile', 'cup', 'dinosaur', 'dolphin', 'elephant', 'flatfish', 'forest', 'fox', 'girl', 'hamster', 'house', 'kangaroo', 'keyboard', 'lamp', 'lawn_mower', 'leopard', 'lion', 'lizard', 'lobster', 'man', 'maple_tree', 'motorcycle', 'mountain', 'mouse', 'mushroom', 'oak_tree', 'orange', 'orchid', 'otter', 'palm_tree', 'pear', 'pickup_truck', 'pine_tree', 'plain', 'plate', 'poppy', 'porcupine', 'possum', 'rabbit', 'raccoon', 'ray', 'road', 'rocket', 'rose', 'sea', 'seal', 'shark', 'shrew', 'skunk', 'skyscraper', 'snail', 'snake', 'spider', 'squirrel', 'streetcar', 'sunflower', 'sweet_pepper', 'table', 'tank', 'telephone', 'television', 'tiger', 'tractor', 'train', 'trout', 'tulip', 'turtle', 'wardrobe', 'whale', 'willow_tree', 'wolf', 'woman', 'worm'])
+
+def generate_p(p=0.5):
+    p_mat = np.ones((100,100))
+    q = (1-p)/95
+    p_mat *=  q
+    for i in range(100):
+        superclass = fine2coarse[i]
+        sameclass = a[superclass]
+        p_mat[i][sameclass] = p/5
+    return p_mat
+
+prob = generate_p(p=args.p)
+
+for i in range(5):
+    print(b[a[i]])
+    print(prob[a[i][0]][a[i]])
+    print(b[a[10]])
+    print(prob[a[i][0]][a[10]])
+
+
 
 # Model
 if args.resume:

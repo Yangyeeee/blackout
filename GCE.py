@@ -245,12 +245,60 @@ class blackout3(nn.Module):
         self.eps = eps
         self.use_cuda = use_cuda
         self.prob = prob
+        self.q = prob[0,0]
 
     # here we implemented step by step for corresponding to our formula
     # described in the paper
     def forward(self, yHat, y):
         self.batch_size = len(y)
-        # yHat = torch.exp(yHat)
+        maxxx = torch.max(yHat, dim=-1)[0].unsqueeze(-1).detach()
+        yHat = yHat - maxxx
+        Yg = torch.gather(yHat, 1, torch.unsqueeze(y, 1))
+
+
+        complement = torch.zeros_like(yHat)[:, :self.k]
+        p = torch.ones_like(yHat)[:, :self.k]
+        #generate random index
+        for i in range(yHat.shape[0]):
+            ind = y.new_tensor(np.random.choice(a=100, size=self.k, replace=True, p=self.prob[y[i]]))
+            complement[i] = yHat[i,ind]
+
+            j = (y[i] == ind)          #mask out duplicate target labels
+            p[i,j] = 0
+            p[i] *= 1 / yHat.new_tensor(self.prob[y[i]])[ind]
+        #compute weighted softmax
+        complement = p *torch.exp(complement)#
+
+        Yg = (1/self.q) *torch.exp(Yg)
+        out = torch.cat((Yg, complement), 1)
+        out = out/(out.sum(dim=1).unsqueeze(-1))
+
+        #calculate blackout loss
+        out_c = 1 - out
+        mask = torch.zeros_like(yHat)[:,:self.k+1]
+        mask[:,0] = 1
+        mask_c = 1 - mask
+
+        loss = -1. * (torch.log(out + self.eps) * mask + torch.log(out_c + self.eps) * mask_c).mean() #.sum(-1).mean()  #
+        return loss
+
+
+class blackout4(nn.Module):
+
+    def __init__(self, k=5, classes=10, eps=1e-10, use_cuda=False,prob=0):
+        super(blackout4, self).__init__()
+        self.k = k
+        self.classes = classes
+        self.eps = eps
+        self.use_cuda = use_cuda
+        self.prob = prob
+        # self.prob_c = prob.copy()
+        # np.fill_diagonal(self.prob_c, self.prob_c.diagonal() * 0)
+
+    # here we implemented step by step for corresponding to our formula
+    # described in the paper
+    def forward(self, yHat, y):
+        self.batch_size = len(y)
         maxxx = torch.max(yHat, dim=-1)[0].unsqueeze(-1).detach()
         yHat = yHat - maxxx
         Yg = torch.gather(yHat, 1, torch.unsqueeze(y, 1))
