@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+from utils import *
 # For MNIST dataset we difine classes to 10
 classes = 10
 
@@ -165,7 +166,7 @@ class blackout1(nn.Module):
 
         #generate random index
         #ind = torch.randperm(self.classes -1)                          #sample w/o replacement
-        ind = torch.randint(0, self.classes -1, (self.k,))     #sample with replacement
+        ind = torch.randint(0, self.classes - 1, (self.k,))     #sample with replacement
         if self.use_cuda:
             ind = ind.cuda()
         complement = Yg_[:,ind]
@@ -238,14 +239,17 @@ class blackout2(nn.Module):
 
 class blackout3(nn.Module):
 
-    def __init__(self, k=5, classes=10, eps=1e-10, use_cuda=False,prob=0):
+    def __init__(self, k=5, classes=10, eps=1e-10, use_cuda=False, p=0.5):
         super(blackout3, self).__init__()
         self.k = k
         self.classes = classes
         self.eps = eps
         self.use_cuda = use_cuda
-        self.prob = prob
-        self.q = prob[0,0]
+        prob = generate_p_cifar100(p)
+        self.eval_prob = prob.copy()
+        np.fill_diagonal(prob, 0)
+        sampling_prob = prob / (prob.sum(-1).reshape(-1, 1))
+        self.sampling_prob = sampling_prob
 
     # here we implemented step by step for corresponding to our formula
     # described in the paper
@@ -255,21 +259,29 @@ class blackout3(nn.Module):
         yHat = yHat - maxxx
         Yg = torch.gather(yHat, 1, torch.unsqueeze(y, 1))
 
+        #complement = torch.zeros(self.batch_size, self.k)
+        p = np.zeros((self.batch_size, self.k), dtype=np.single)
+        q = np.zeros((self.batch_size, 1), dtype=np.single)
+        ind = np.zeros((self.batch_size, self.k), dtype=np.int64)
 
-        complement = torch.zeros_like(yHat)[:, :self.k]
-        p = torch.ones_like(yHat)[:, :self.k]
         #generate random index
-        for i in range(yHat.shape[0]):
-            ind = y.new_tensor(np.random.choice(a=100, size=self.k, replace=True, p=self.prob[y[i]]))
-            complement[i] = yHat[i,ind]
+        for i in range(self.batch_size):
+            ind[i] = np.random.choice(a=self.classes, size=self.k, replace=True, p=self.sampling_prob[y[i]])
+            p[i] = self.eval_prob[y[i], ind[i]]
+            q[i] = self.eval_prob[y[i], y[i]]
+        ind = torch.from_numpy(ind)
+        p = torch.from_numpy(p)
+        q = torch.from_numpy(q)
+        if self.use_cuda:
+            ind = ind.cuda()
+            p = p.cuda()
+            q = q.cuda()
 
-            j = (y[i] == ind)          #mask out duplicate target labels
-            p[i,j] = 0
-            p[i] *= 1 / yHat.new_tensor(self.prob[y[i]])[ind]
-        #compute weighted softmax
-        complement = p *torch.exp(complement)#
+        # compute weighted softmax
+        complement = yHat.gather(1, ind)
+        complement = (1/p) * torch.exp(complement)
+        Yg = (1/q) * torch.exp(Yg)
 
-        Yg = (1/self.q) *torch.exp(Yg)
         out = torch.cat((Yg, complement), 1)
         out = out/(out.sum(dim=1).unsqueeze(-1))
 
@@ -279,7 +291,7 @@ class blackout3(nn.Module):
         mask[:,0] = 1
         mask_c = 1 - mask
 
-        loss = -1. * (torch.log(out + self.eps) * mask + torch.log(out_c + self.eps) * mask_c).mean() #.sum(-1).mean()  #
+        loss = -1. * (torch.log(out + self.eps) * mask + torch.log(out_c + self.eps) * mask_c).mean()
         return loss
 
 

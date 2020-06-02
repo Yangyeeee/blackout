@@ -9,8 +9,8 @@ import torch.nn.init as init
 import numpy as np
 import torch
 
-_, term_width = os.popen('stty size', 'r').read().split()
-term_width = int(term_width)
+#_, term_width = os.popen('stty size', 'r').read().split()
+term_width = 80 #int(term_width)
 
 last_time = time.time()
 begin_time = last_time
@@ -145,3 +145,58 @@ def get_word2vec(word_counter):
 
     print("{}/{} of word vocab have corresponding vectors in {}".format(len(word2vec_dict), len(word_counter), glove_path))
     return word2vec_dict
+
+
+def generate_p_cifar100(p=0.5):
+    fine2coarse = np.load("fine2coarse.npy")
+    coarse2fine = np.array([
+        [4, 30, 55, 72, 95],
+        [1, 32, 67, 73, 91],
+        [54, 62, 70, 82, 92],
+        [9, 10, 16, 28, 61],
+        [0, 51, 53, 57, 83],
+        [22, 39, 40, 86, 87],
+        [5, 20, 25, 84, 94],
+        [6, 7, 14, 18, 24],
+        [3, 42, 43, 88, 97],
+        [12, 17, 37, 68, 76],
+        [23, 33, 49, 60, 71],
+        [15, 19, 21, 31, 38],
+        [34, 63, 64, 66, 75],
+        [26, 45, 77, 79, 99],
+        [2, 11, 35, 46, 98],
+        [27, 29, 44, 78, 93],
+        [36, 50, 65, 74, 80],
+        [47, 52, 56, 59, 96],
+        [8, 13, 48, 58, 90],
+        [41, 69, 81, 85, 89]])
+
+    p_mat = np.ones((100, 100), dtype=np.single)
+    q = (1-p)/95
+    p = p/5
+    p_mat *=  q
+    for i in range(100):
+        superclass = fine2coarse[i]
+        sameclass = coarse2fine[superclass]
+        p_mat[i][sameclass] = p
+
+    # for debugging
+    #classname = np.array(
+    #    ['apple', 'aquarium_fish', 'baby', 'bear', 'beaver', 'bed', 'bee', 'beetle', 'bicycle', 'bottle', 'bowl', 'boy',
+    #     'bridge', 'bus', 'butterfly', 'camel', 'can', 'castle', 'caterpillar', 'cattle', 'chair', 'chimpanzee',
+    #     'clock', 'cloud', 'cockroach', 'couch', 'crab', 'crocodile', 'cup', 'dinosaur', 'dolphin', 'elephant',
+    #     'flatfish', 'forest', 'fox', 'girl', 'hamster', 'house', 'kangaroo', 'keyboard', 'lamp', 'lawn_mower',
+    #     'leopard', 'lion', 'lizard', 'lobster', 'man', 'maple_tree', 'motorcycle', 'mountain', 'mouse', 'mushroom',
+    #     'oak_tree', 'orange', 'orchid', 'otter', 'palm_tree', 'pear', 'pickup_truck', 'pine_tree', 'plain', 'plate',
+    #     'poppy', 'porcupine', 'possum', 'rabbit', 'raccoon', 'ray', 'road', 'rocket', 'rose', 'sea', 'seal', 'shark',
+    #     'shrew', 'skunk', 'skyscraper', 'snail', 'snake', 'spider', 'squirrel', 'streetcar', 'sunflower',
+    #     'sweet_pepper', 'table', 'tank', 'telephone', 'television', 'tiger', 'tractor', 'train', 'trout', 'tulip',
+    #     'turtle', 'wardrobe', 'whale', 'willow_tree', 'wolf', 'woman', 'worm'])
+
+    #for i in range(5):
+    #    print(classname[coarse2fine[i]])
+    #    print(p_mat[coarse2fine[i][0]][coarse2fine[i]])
+    #    print(classname[coarse2fine[10]])
+    #    print(p_mat[coarse2fine[i][0]][coarse2fine[10]])
+
+    return p_mat
