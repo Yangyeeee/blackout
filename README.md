@@ -10,7 +10,7 @@ python main_cot.py --gpu 4 --sess softmax.1 --cifar 100 -e 200 --lr 0.1    (test
 
 blackout:
 
-python main_cot.py --gpu 4 --sess black1.50.1 --cifar 100 -e 200 --lr 0.1 --k 50 --blackout 1    (test acc: 75.4%)
+python main_cot.py --gpu 4 --sess black1.50.1 --cifar 100 -e 200 --lr 0.1 --k 50 --blackout 1    (test acc: 75.42%)
 
 python main_cot.py --gpu 4 --sess black3.50.1.1 --cifar 100 -e 200 --lr 0.1 --k 50 --blackout 3  --p 0.1 (test acc: 75.28%)
 
