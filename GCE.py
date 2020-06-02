@@ -175,7 +175,7 @@ class blackout1(nn.Module):
         #compute weighted softmax
         out = out / out.sum(dim=1, keepdim=True)
 
-        loss = -1 * (torch.log(out + self.eps)[:,0].mean() + torch.log(1 - out + self.eps)[:, 1:].mean())
+        loss = -1 * (torch.log(out + self.eps)[:,0].mean()/(self.k+1) + torch.log(1 - out + self.eps)[:, 1:].mean()*self.k/(self.k+1))
         return loss
 
 
@@ -273,7 +273,7 @@ class blackout3(nn.Module):
         out = (1/p) * torch.exp(logits)
         out = out/out.sum(dim=1, keepdim=True)
 
-        loss = -1 * (torch.log(out + self.eps)[:, 0].mean() + torch.log(1 - out + self.eps)[:, 1:].mean())
+        loss = -1 * (torch.log(out + self.eps)[:, 0].mean()/(self.k+1) + torch.log(1 - out + self.eps)[:, 1:].mean()*self.k/(self.k+1))
         return loss
 
 
