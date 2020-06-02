@@ -153,9 +153,6 @@ class blackout1(nn.Module):
     # described in the paper
     def forward(self, yHat, y):
         self.batch_size = len(y)
-        # yHat = torch.exp(yHat)
-        maxxx = torch.max(yHat, dim=-1)[0].unsqueeze(-1).detach()
-        yHat = yHat - maxxx
         Yg = torch.gather(yHat, 1, torch.unsqueeze(y, 1))
 
         #get complement element
@@ -171,19 +168,14 @@ class blackout1(nn.Module):
             ind = ind.cuda()
         complement = Yg_[:,ind]
 
-        #compute weighted softmax
-        complement = self.k * torch.exp(complement)
-        Yg = self.k * torch.exp(Yg)
         out = torch.cat((Yg, complement), 1)
-        out = out / (out.sum(dim=1).unsqueeze(-1))
+        maxxx = torch.max(out, dim=-1, keepdim=True)[0].detach()
+        out = out - maxxx
 
-        #calculate blackout loss
-        out_c = 1 - out
-        mask = torch.zeros_like(yHat)[:,:self.k+1]
-        mask[:,0] = 1
-        mask_c = 1 - mask
+        #compute weighted softmax
+        out = out / out.sum(dim=1, keepdim=True)
 
-        loss = -1. * (torch.log(out + self.eps) * mask + torch.log(out_c + self.eps) * mask_c).mean()  #
+        loss = -1 * (torch.log(out + self.eps)[:,0].mean() + torch.log(1 - out + self.eps)[:, 1:].mean())
         return loss
 
 
@@ -255,43 +247,33 @@ class blackout3(nn.Module):
     # described in the paper
     def forward(self, yHat, y):
         self.batch_size = len(y)
-        maxxx = torch.max(yHat, dim=-1)[0].unsqueeze(-1).detach()
-        yHat = yHat - maxxx
-        Yg = torch.gather(yHat, 1, torch.unsqueeze(y, 1))
 
         #complement = torch.zeros(self.batch_size, self.k)
-        p = np.zeros((self.batch_size, self.k), dtype=np.single)
-        q = np.zeros((self.batch_size, 1), dtype=np.single)
-        ind = np.zeros((self.batch_size, self.k), dtype=np.int64)
+        p = np.zeros((self.batch_size, self.k+1), dtype=np.single)
+        ind = np.zeros((self.batch_size, self.k+1), dtype=np.int64)
 
         #generate random index
         for i in range(self.batch_size):
-            ind[i] = np.random.choice(a=self.classes, size=self.k, replace=True, p=self.sampling_prob[y[i]])
-            p[i] = self.eval_prob[y[i], ind[i]]
-            q[i] = self.eval_prob[y[i], y[i]]
+            ind[i, 0] = y[i]
+            ind[i, 1:] = np.random.choice(a=self.classes, size=self.k, replace=True, p=self.sampling_prob[y[i]])
+            p[i, 0] = self.eval_prob[y[i], y[i]]
+            p[i, 1:] = self.eval_prob[y[i], ind[i, 1:]]
+
         ind = torch.from_numpy(ind)
         p = torch.from_numpy(p)
-        q = torch.from_numpy(q)
         if self.use_cuda:
             ind = ind.cuda()
             p = p.cuda()
-            q = q.cuda()
 
         # compute weighted softmax
-        complement = yHat.gather(1, ind)
-        complement = (1/p) * torch.exp(complement)
-        Yg = (1/q) * torch.exp(Yg)
+        logits = yHat.gather(1, ind)
+        maxxx = torch.max(logits, dim=-1, keepdim=True)[0].detach()
+        logits = logits - maxxx
 
-        out = torch.cat((Yg, complement), 1)
-        out = out/(out.sum(dim=1).unsqueeze(-1))
+        out = (1/p) * torch.exp(logits)
+        out = out/out.sum(dim=1, keepdim=True)
 
-        #calculate blackout loss
-        out_c = 1 - out
-        mask = torch.zeros_like(yHat)[:,:self.k+1]
-        mask[:,0] = 1
-        mask_c = 1 - mask
-
-        loss = -1. * (torch.log(out + self.eps) * mask + torch.log(out_c + self.eps) * mask_c).mean()
+        loss = -1 * (torch.log(out + self.eps)[:, 0].mean() + torch.log(1 - out + self.eps)[:, 1:].mean())
         return loss
 
 
