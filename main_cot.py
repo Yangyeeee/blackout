@@ -20,6 +20,7 @@ from torch.autograd import Variable
 from models.LeNet5_lgm import *
 from models.resnet import *
 from models.PreActResNet import *
+from models.resnext import *
 from COT import *
 from GCE import *
 from utils import *
@@ -190,6 +191,7 @@ if args.cifar == 10 or args.cifar == 100:
         cotcriterion = ComplementEntropy(args.cifar)
         # optimizer = torch.optim.SGD(net.parameters(), lr=0.01, momentum=0.9, weight_decay=5e-4)
         cotoptimizer = optim.SGD(net.parameters(), lr=base_learning_rate, momentum=0.9, weight_decay=args.decay)
+        criterion = nn.CrossEntropyLoss()
         #lr_scheduler2 = torch.optim.lr_scheduler.MultiStepLR(cotoptimizer, milestones=[100, 150])
     elif args.blackout == 0:
         criterion = blackout0(args.k, args.cifar, args.eps, use_cuda)
